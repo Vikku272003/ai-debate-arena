@@ -1,0 +1,715 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>AI Debate Arena</title>
+<script src="https://unpkg.com/react@18/umd/react.development.js"></script>
+<script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+<script src="https://unpkg.com/@babel/standalone@7.23.5/babel.min.js"></script>
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+body { background: #f4f3f0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; color: #1a1a18; min-height: 100vh; }
+.page { max-width: 880px; margin: 0 auto; padding: 2rem 1.25rem 4rem; }
+.page-title { font-family: Georgia, serif; font-size: 22px; font-weight: normal; color: #1a1a18; letter-spacing: .02em; margin-bottom: 2px; }
+.page-sub { font-size: 13px; color: #909088; margin-bottom: 1.5rem; }
+
+/* API key row */
+.apikey-row { display: flex; gap: 8px; align-items: center; margin-bottom: 8px; padding: 10px 13px; background: #fff; border: 1px solid #e2e0d9; border-radius: 8px; }
+.apikey-label { font-size: 12px; color: #8a8880; white-space: nowrap; font-weight: 600; }
+.apikey-input { flex: 1; padding: 6px 10px; font-size: 13px; font-family: monospace; border: 1px solid #dddad4; border-radius: 6px; background: #fafaf7; color: #1a1a18; outline: none; }
+.apikey-input:focus { border-color: #aaa89a; }
+
+/* Free key note */
+.free-note { font-size: 12px; color: #6a8a6a; background: #eef6ee; border: 1px solid #c0d8c0; border-radius: 6px; padding: 7px 12px; margin-bottom: 1rem; line-height: 1.55; }
+.free-note a { color: #2a6a36; font-weight: 600; }
+
+/* Controls */
+.controls { display: flex; gap: 8px; align-items: center; margin-bottom: 1.25rem; flex-wrap: wrap; }
+.topic-input { flex: 1; min-width: 200px; padding: 9px 13px; font-size: 14px; border: 1px solid #dddad4; border-radius: 8px; background: #fff; color: #1a1a18; outline: none; font-family: inherit; transition: border-color .15s; }
+.topic-input:focus { border-color: #aaa89a; }
+.topic-input::placeholder { color: #c0bdb5; }
+.topic-input:disabled { background: #f8f7f4; color: #aaa; }
+.btn { padding: 9px 16px; font-size: 13px; font-weight: 500; font-family: inherit; border-radius: 8px; border: 1px solid transparent; cursor: pointer; white-space: nowrap; transition: background .12s, opacity .12s; flex-shrink: 0; }
+.btn:active:not(:disabled) { transform: scale(.98); }
+.btn-start { background: #1c1c1a; color: #fff; border-color: #1c1c1a; }
+.btn-start:hover:not(:disabled) { background: #2e2e2b; }
+.btn-start:disabled { opacity: .38; cursor: not-allowed; }
+.btn-verdict { background: #2d4030; color: #d8eeda; border-color: #2d4030; }
+.btn-verdict:hover:not(:disabled) { background: #213020; }
+.btn-verdict:disabled { opacity: .38; cursor: not-allowed; }
+.btn-reset { background: #fff; color: #606058; border-color: #dddad4; }
+.btn-reset:hover { background: #f0efe9; }
+
+/* Status pill */
+.status-pill { display: inline-flex; align-items: center; gap: 6px; font-size: 11.5px; color: #767870; background: #eceae5; border-radius: 20px; padding: 3px 11px; margin-bottom: 1.1rem; letter-spacing: .04em; text-transform: uppercase; }
+.pulse { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
+.pulse-idle { background: #c0bdb5; }
+.pulse-live { background: #5a9a66; animation: blink-dot 1.1s infinite; }
+.pulse-done { background: #7aaa54; }
+@keyframes blink-dot { 0%,100%{opacity:1} 50%{opacity:.25} }
+
+/* Error */
+.error-bar { font-size: 13px; color: #7a3030; background: #f8eeee; border: 1px solid #e4cccc; border-radius: 8px; padding: 9px 13px; margin-bottom: 12px; line-height: 1.5; }
+
+/* Card */
+.card { background: #fff; border: 1px solid #e2e0d9; border-radius: 12px; box-shadow: 0 1px 3px rgba(0,0,0,.04), 0 4px 16px rgba(0,0,0,.05); overflow: hidden; margin-bottom: 12px; }
+.card-head { display: flex; align-items: center; gap: 9px; padding: 11px 15px; border-bottom: 1px solid #eeece6; }
+.agent-chip { width: 28px; height: 28px; border-radius: 7px; display: flex; align-items: center; justify-content: center; font-size: 14px; flex-shrink: 0; }
+.chip-a { background: #e8f0f8; }
+.chip-b { background: #f8e8e8; }
+.chip-j { background: #f5f0e6; }
+.card-title { font-size: 13px; font-weight: 600; color: #1a1a18; }
+.card-tag { margin-left: auto; font-size: 11px; color: #9a9890; letter-spacing: .04em; text-transform: uppercase; }
+.card-body { padding: 14px 15px; }
+
+/* Text */
+.arg-text { font-family: Georgia, serif; font-size: 14px; line-height: 1.8; color: #28281e; }
+.muted { font-size: 13px; color: #c0bdb5; font-style: italic; }
+.cursor-blink { display: inline-block; width: 2px; height: 14px; background: #5a8a5a; vertical-align: middle; margin-left: 1px; border-radius: 1px; animation: cur .75s step-end infinite; }
+@keyframes cur { 0%,100%{opacity:1} 50%{opacity:0} }
+
+/* Score section */
+.score-section { margin-top: 13px; padding-top: 13px; border-top: 1px solid #eeece6; }
+.score-bars { display: flex; flex-direction: column; gap: 7px; margin-bottom: 10px; }
+.bar-row { display: flex; align-items: center; gap: 8px; }
+.bar-label { font-size: 11.5px; color: #888880; width: 76px; flex-shrink: 0; }
+.bar-track { flex: 1; height: 5px; background: #eeecea; border-radius: 3px; overflow: hidden; }
+.bar-fill { height: 100%; border-radius: 3px; transition: width .55s ease; }
+.bar-val { font-size: 12px; font-weight: 600; width: 22px; text-align: right; flex-shrink: 0; }
+.color-win { color: #2a6a36; }
+.color-lose { color: #8a2a2a; }
+.color-neu { color: #666660; }
+.fill-win { background: #6aaa7a; }
+.fill-lose { background: #cc7a7a; }
+.fill-neu { background: #aaa8a0; }
+.score-pills { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 8px; }
+.score-pill { font-size: 11.5px; padding: 3px 10px; border-radius: 20px; border: 1px solid; }
+.pill-win { background: #eef6ee; border-color: #b4d8bc; color: #236a30; font-weight: 600; }
+.pill-lose { background: #f8eeee; border-color: #e0c0c0; color: #8a2a2a; }
+.pill-neu { background: #f4f3ef; border-color: #dddad4; color: #555550; }
+.agent-summary { font-size: 12px; color: #686860; line-height: 1.55; padding: 7px 10px; background: #fafaf7; border: 1px solid #eeece6; border-radius: 6px; }
+
+/* Two-col grid */
+.agents-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 12px; }
+.agents-grid .card { margin-bottom: 0; }
+
+/* Judge */
+.judge-raw { font-family: monospace; font-size: 11px; color: #9a9890; white-space: pre-wrap; word-break: break-all; line-height: 1.5; }
+.judge-comment { font-family: Georgia, serif; font-size: 14px; line-height: 1.75; color: #38382e; font-style: italic; }
+
+/* Scoreboard */
+.sb-table-wrap { overflow-x: auto; }
+table { width: 100%; border-collapse: collapse; font-size: 12px; }
+thead th { padding: 7px 9px; text-align: center; font-size: 10.5px; font-weight: 600; color: #8a8880; letter-spacing: .05em; text-transform: uppercase; background: #fafaf7; border-bottom: 1px solid #eeece6; }
+thead th.tl { text-align: left; }
+thead th.sep { border-right: 1px solid #eeece6; }
+tbody td { padding: 8px 9px; text-align: center; border-bottom: 1px solid #f3f2ee; font-size: 12px; }
+tbody td.tl { text-align: left; font-weight: 600; color: #1a1a18; }
+tbody td.sep { border-right: 1px solid #f3f2ee; }
+tbody tr:last-child td { border-bottom: none; }
+tbody tr:hover td { background: #fafaf7; }
+.td-bold { font-weight: 700; }
+.td-green { color: #2a6a36; font-weight: 700; }
+.td-red { color: #8a2a2a; }
+
+/* Totals bar */
+.totals-bar { display: flex; align-items: center; gap: 12px; padding: 10px 15px; border-top: 1px solid #eeece6; background: #fafaf7; flex-wrap: wrap; }
+.tot-item { display: flex; align-items: baseline; gap: 5px; }
+.tot-label { font-size: 12px; color: #8a8880; }
+.tot-val { font-size: 16px; font-weight: 700; color: #1a1a18; }
+.tot-divider { width: 1px; height: 18px; background: #e4e2da; flex-shrink: 0; }
+.lead-chip { margin-left: auto; font-size: 12px; font-weight: 600; padding: 4px 12px; border-radius: 20px; }
+.chip-green { background: #eef6ee; border: 1px solid #b4d8bc; color: #2a6030; }
+.chip-red { background: #f8eeee; border: 1px solid #e0c0c0; color: #7a2a2a; }
+.chip-grey { background: #f2f1ec; border: 1px solid #dddad4; color: #58584e; }
+
+/* Verdict */
+.verdict-top { padding: 22px 20px 16px; text-align: center; border-bottom: 1px solid #eeece6; }
+.verdict-crown { font-size: 34px; margin-bottom: 6px; line-height: 1; }
+.verdict-eyebrow { font-size: 10.5px; color: #9a9890; letter-spacing: .08em; text-transform: uppercase; margin-bottom: 5px; }
+.verdict-name { font-family: Georgia, serif; font-size: 22px; color: #1a1a18; font-weight: normal; margin-bottom: 4px; }
+.verdict-margin { font-size: 13px; color: #767870; }
+.verdict-body { padding: 16px 20px; }
+.verdict-prose { font-family: Georgia, serif; font-size: 14.5px; line-height: 1.8; color: #2a2820; font-style: italic; text-align: center; margin-bottom: 16px; }
+.verdict-stats { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.vstat { text-align: center; padding: 12px 10px; border-radius: 8px; border: 1px solid #e2e0d9; background: #fafaf7; }
+.vstat-label { font-size: 11px; color: #8a8880; letter-spacing: .04em; text-transform: uppercase; margin-bottom: 3px; }
+.vstat-val { font-family: Georgia, serif; font-size: 26px; color: #1a1a18; line-height: 1; }
+.vstat-sub { font-size: 11px; color: #9a9890; margin-top: 2px; }
+
+/* file:// warning */
+.cors-warn { font-size: 13px; color: #5a4a20; background: #fdf6e3; border: 1px solid #e8d88a; border-radius: 8px; padding: 10px 14px; margin-bottom: 12px; line-height: 1.6; }
+.cors-warn code { background: #f0e8c8; padding: 1px 5px; border-radius: 4px; font-size: 12px; }
+
+@media (max-width: 600px) {
+  .agents-grid { grid-template-columns: 1fr; }
+  .controls { flex-direction: column; align-items: stretch; }
+  .btn { width: 100%; }
+}
+</style>
+</head>
+<body>
+<div id="root"><p style="padding:2rem;color:#888;font-family:sans-serif">Loading…</p></div>
+
+<script type="text/babel" data-presets="react">
+
+// ── file:// detection ────────────────────────────────────────
+var IS_FILE = window.location.protocol === 'file:';
+
+// ══════════════════════════════════════════════════════
+// GROQ STREAMING  (OpenAI-compatible, 100% free tier)
+// Get your free key at: https://console.groq.com
+// ══════════════════════════════════════════════════════
+
+var GROQ_MODEL = "llama-3.3-70b-versatile";
+
+async function streamGroq(apiKey, systemPrompt, userMsg, onToken) {
+  var res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer " + apiKey
+    },
+    body: JSON.stringify({
+      model: GROQ_MODEL,
+      max_tokens: 1024,
+      stream: true,
+      messages: [
+        { role: "system", content: systemPrompt },
+        { role: "user",   content: userMsg }
+      ]
+    })
+  });
+
+  if (!res.ok) {
+    var txt = await res.text();
+    throw new Error("Groq API " + res.status + ": " + txt);
+  }
+
+  var reader = res.body.getReader();
+  var dec    = new TextDecoder();
+  var full   = "";
+
+  while (true) {
+    var result = await reader.read();
+    if (result.done) break;
+    var chunk = dec.decode(result.value, { stream: true });
+    var lines = chunk.split("\n");
+    for (var i = 0; i < lines.length; i++) {
+      var line = lines[i].trim();
+      if (!line.startsWith("data: ")) continue;
+      var raw = line.slice(6).trim();
+      if (raw === "[DONE]") continue;
+      try {
+        var parsed = JSON.parse(raw);
+        var token  = parsed.choices &&
+                     parsed.choices[0] &&
+                     parsed.choices[0].delta &&
+                     parsed.choices[0].delta.content;
+        if (token) { full += token; onToken(token); }
+      } catch(e) {}
+    }
+  }
+  return full;
+}
+
+// ══════════════════════════════════════════════════════
+// PROMPTS
+// ══════════════════════════════════════════════════════
+
+function sysProposer(topic) {
+  return "You are a skilled debate champion arguing IN FAVOR of the following topic.\n" +
+    "- Build the strongest possible case FOR this position\n" +
+    "- Use clear logic, real-world examples, and compelling reasoning\n" +
+    "- Structure: opening claim, 2-3 supporting points, closing statement\n" +
+    "- Be confident, persuasive, direct. Do NOT acknowledge the opposing side.\n" +
+    "- Keep your response to 150-200 words.\n\n" +
+    "Topic: " + topic + "\n\nDeliver your argument now.";
+}
+
+function sysOpposer(topic, propArg) {
+  return "You are a skilled debate champion arguing AGAINST the following topic.\n" +
+    "- Directly rebut the specific points made by the Proposer\n" +
+    "- Build a strong counter-case AGAINST this position\n" +
+    "- Structure: rebut Proposer, then 2-3 independent counter-points, then close strongly\n" +
+    "- Be sharp, confident, direct. 150-200 words.\n\n" +
+    "Topic: " + topic + "\n\n" +
+    "Proposer's argument:\n" + propArg + "\n\nDeliver your counter-argument now.";
+}
+
+function sysJudge(topic, propArg, oppArg) {
+  return "You are an impartial debate judge scoring one round.\n" +
+    "Score each debater on:\n" +
+    "- Logic (0-10): reasoning quality and structure\n" +
+    "- Evidence (0-10): examples, facts, real-world support\n" +
+    "- Persuasion (0-10): rhetoric and compelling delivery\n\n" +
+    "Topic: " + topic + "\n\n" +
+    "Proposer's argument:\n" + propArg + "\n\n" +
+    "Opposer's argument:\n" + oppArg + "\n\n" +
+    "Return ONLY a valid JSON object. No markdown, no code fences, no text before or after.\n" +
+    "Exact format:\n" +
+    '{"proposer":{"logic":7,"evidence":6,"persuasion":8,"total":21,"summary":"One sentence."},' +
+    '"opposer":{"logic":8,"evidence":7,"persuasion":7,"total":22,"summary":"One sentence."},' +
+    '"round_winner":"opposer","round_commentary":"One or two sentences."}\n\n' +
+    "Rules: total MUST equal logic+evidence+persuasion. round_winner MUST be exactly \"proposer\" or \"opposer\".";
+}
+
+function sysVerdict(topic, history, cum) {
+  var lines = history.map(function(h, i) {
+    var ps = h.scores && h.scores.proposer ? h.scores.proposer.total : "?";
+    var os = h.scores && h.scores.opposer  ? h.scores.opposer.total  : "?";
+    var rw = h.scores ? h.scores.round_winner    : "unknown";
+    var rc = h.scores ? h.scores.round_commentary || "" : "";
+    return "Round " + (i+1) + ": Proposer " + ps + " pts, Opposer " + os + " pts. Winner: " + rw + ". " + rc;
+  }).join("\n");
+  return "You are the chief debate judge delivering a final verdict.\n\n" +
+    "Topic debated: \"" + topic + "\"\n\n" +
+    "Round-by-round results:\n" + lines + "\n\n" +
+    "Overall totals — Proposer: " + cum.proposer + " pts, Opposer: " + cum.opposer + " pts.\n\n" +
+    "Write a final verdict of 2-3 sentences. Name the overall winner clearly. " +
+    "Highlight the decisive strength that won the debate. " +
+    "Be authoritative and concise. Plain prose only, no markdown, no JSON.";
+}
+
+// ══════════════════════════════════════════════════════
+// JSON PARSE HELPER
+// ══════════════════════════════════════════════════════
+
+function parseJudgeJSON(raw) {
+  try {
+    var s = raw.indexOf("{");
+    var e = raw.lastIndexOf("}");
+    if (s === -1 || e === -1) return null;
+    return JSON.parse(raw.slice(s, e + 1));
+  } catch(err) { return null; }
+}
+
+// ══════════════════════════════════════════════════════
+// COMPONENTS
+// ══════════════════════════════════════════════════════
+
+function ScoreBar({ label, value, state }) {
+  var fillCls = state === "win" ? "fill-win" : state === "lose" ? "fill-lose" : "fill-neu";
+  var valCls  = state === "win" ? "color-win" : state === "lose" ? "color-lose" : "color-neu";
+  return (
+    <div className="bar-row">
+      <span className="bar-label">{label}</span>
+      <div className="bar-track">
+        <div className={"bar-fill " + fillCls} style={{ width: (value * 10) + "%" }} />
+      </div>
+      <span className={"bar-val " + valCls}>{value}</span>
+    </div>
+  );
+}
+
+function AgentCard({ chipClass, emoji, name, stance, bodyText, isStreaming, scores, winnerState }) {
+  var pillCls = winnerState === "win" ? "pill-win" : winnerState === "lose" ? "pill-lose" : "pill-neu";
+  return (
+    <div className="card" style={{ display:"flex", flexDirection:"column" }}>
+      <div className="card-head">
+        <div className={"agent-chip " + chipClass}>{emoji}</div>
+        <span className="card-title">{name}</span>
+        <span className="card-tag">{stance}</span>
+      </div>
+      <div className="card-body" style={{ flex:1, minHeight:160 }}>
+        {!bodyText && isStreaming  && <p className="muted">Preparing…</p>}
+        {!bodyText && !isStreaming && <p className="muted">Waiting…</p>}
+        {bodyText && (
+          <p className="arg-text">
+            {bodyText}
+            {isStreaming && <span className="cursor-blink"/>}
+          </p>
+        )}
+        {scores && (
+          <div className="score-section">
+            <div className="score-bars">
+              <ScoreBar label="Logic"      value={scores.logic}      state={winnerState}/>
+              <ScoreBar label="Evidence"   value={scores.evidence}   state={winnerState}/>
+              <ScoreBar label="Persuasion" value={scores.persuasion} state={winnerState}/>
+            </div>
+            <div className="score-pills">
+              <span className={"score-pill " + pillCls}>
+                {winnerState === "win" ? "🏆 " : ""}Total {scores.total}/30
+              </span>
+            </div>
+            {scores.summary && <div className="agent-summary">{scores.summary}</div>}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ══════════════════════════════════════════════════════
+// MAIN APP
+// ══════════════════════════════════════════════════════
+
+var INIT = {
+  round:0, phase:"idle",
+  aText:"", bText:"", judgeRaw:"", judgeComment:"", roundScores:null,
+  history:[], cum:{ proposer:0, opposer:0, rP:0, rO:0 },
+  verdict:"", verdictDone:false, error:""
+};
+
+function App() {
+  var useState    = React.useState;
+  var useCallback = React.useCallback;
+
+  var [apiKey,  setApiKey]  = useState("");
+  var [topic,   setTopic]   = useState("");
+  var [st,      setSt]      = useState(INIT);
+  var [running, setRunning] = useState(false);
+
+  function upd(patch) {
+    setSt(function(p) { return Object.assign({}, p, patch); });
+  }
+
+  function reset() { setSt(INIT); setRunning(false); }
+
+  // ── Run one round ──────────────────────────────────
+  var runRound = useCallback(async function() {
+    if (!apiKey.trim()) { upd({ error:"Enter your free Groq API key above." }); return; }
+    if (!topic.trim())  { upd({ error:"Enter a debate topic." }); return; }
+    upd({ error:"", aText:"", bText:"", judgeRaw:"", judgeComment:"", roundScores:null });
+    setRunning(true);
+    var r = st.round + 1;
+    upd({ round:r, phase:"proposer", verdict:"", verdictDone:false });
+
+    try {
+      // Proposer
+      var propArg = "";
+      await streamGroq(apiKey, sysProposer(topic), "Make your argument.", function(tok) {
+        propArg += tok;
+        setSt(function(p) { return Object.assign({}, p, { aText: p.aText + tok }); });
+      });
+
+      // Opposer
+      upd({ phase:"opposer" });
+      var oppArg = "";
+      await streamGroq(apiKey, sysOpposer(topic, propArg), "Make your counter-argument.", function(tok) {
+        oppArg += tok;
+        setSt(function(p) { return Object.assign({}, p, { bText: p.bText + tok }); });
+      });
+
+      // Judge
+      upd({ phase:"judge" });
+      var raw = "";
+      await streamGroq(apiKey, sysJudge(topic, propArg, oppArg), "Score this round.", function(tok) {
+        raw += tok;
+        setSt(function(p) { return Object.assign({}, p, { judgeRaw: p.judgeRaw + tok }); });
+      });
+
+      var scores = parseJudgeJSON(raw);
+      if (scores) {
+        var pW = scores.round_winner === "proposer" ? 1 : 0;
+        var oW = scores.round_winner === "opposer"  ? 1 : 0;
+        setSt(function(prev) {
+          return Object.assign({}, prev, {
+            judgeComment: scores.round_commentary || "",
+            roundScores:  scores,
+            phase: "done",
+            history: prev.history.concat([{ round:r, topic:topic, propArg:propArg, oppArg:oppArg, scores:scores }]),
+            cum: {
+              proposer: prev.cum.proposer + (scores.proposer ? scores.proposer.total || 0 : 0),
+              opposer:  prev.cum.opposer  + (scores.opposer  ? scores.opposer.total  || 0 : 0),
+              rP: prev.cum.rP + pW,
+              rO: prev.cum.rO + oW
+            }
+          });
+        });
+      } else {
+        upd({ phase:"done", error:"Judge returned malformed JSON — scores omitted for this round." });
+        setSt(function(prev) {
+          return Object.assign({}, prev, {
+            history: prev.history.concat([{ round:r, topic:topic, propArg:propArg, oppArg:oppArg, scores:null }])
+          });
+        });
+      }
+    } catch(e) {
+      upd({ phase:"done", error:"Error: " + e.message });
+    } finally {
+      setRunning(false);
+    }
+  }, [apiKey, topic, st.round]);
+
+  // ── Final verdict ──────────────────────────────────
+  var deliverVerdict = useCallback(async function() {
+    if (!st.history.length) return;
+    setRunning(true);
+    upd({ phase:"verdict", verdict:"", verdictDone:false });
+    try {
+      await streamGroq(
+        apiKey, sysVerdict(topic, st.history, st.cum),
+        "Deliver the final verdict.",
+        function(tok) { setSt(function(p) { return Object.assign({}, p, { verdict: p.verdict + tok }); }); }
+      );
+      upd({ verdictDone:true, phase:"final" });
+    } catch(e) {
+      upd({ error:"Verdict error: " + e.message, phase:"final" });
+    } finally {
+      setRunning(false);
+    }
+  }, [apiKey, topic, st.history, st.cum]);
+
+  // ── Derived ────────────────────────────────────────
+  var round        = st.round;
+  var phase        = st.phase;
+  var aText        = st.aText;
+  var bText        = st.bText;
+  var judgeRaw     = st.judgeRaw;
+  var judgeComment = st.judgeComment;
+  var roundScores  = st.roundScores;
+  var history      = st.history;
+  var cum          = st.cum;
+  var verdict      = st.verdict;
+  var verdictDone  = st.verdictDone;
+  var error        = st.error;
+
+  var overall =
+    cum.proposer > cum.opposer ? "proposer" :
+    cum.opposer  > cum.proposer ? "opposer" : "tied";
+
+  var winner = roundScores ? roundScores.round_winner : null;
+  var aState = winner === "proposer" ? "win" : winner === "opposer" ? "lose" : "neu";
+  var bState = winner === "opposer"  ? "win" : winner === "proposer" ? "lose" : "neu";
+  var dotState = running ? "pulse-live" : phase === "idle" ? "pulse-idle" : "pulse-done";
+
+  var labels = {
+    idle:"Ready", proposer:"Round "+round+" — Proposer arguing…",
+    opposer:"Round "+round+" — Opposer rebutting…",
+    judge:"Round "+round+" — Judge deliberating…",
+    done:"Round "+round+" complete",
+    verdict:"Delivering final verdict…", final:"Debate concluded"
+  };
+
+  var showAgents     = phase !== "idle" || history.length > 0;
+  var showJudge      = ["judge","done","verdict","final"].indexOf(phase) !== -1;
+  var showScoreboard = history.length > 0;
+  var showVerdictBtn = history.length > 0 && !running && !verdictDone;
+  var showVerdict    = verdict.length > 0 || phase === "verdict";
+  var margin         = Math.abs(cum.proposer - cum.opposer);
+
+  function rowState(h, agent) {
+    if (!h.scores || !h.scores.round_winner) return "";
+    return h.scores.round_winner === agent ? "td-green" : "td-red";
+  }
+
+  return (
+    <div className="page">
+      <h1 className="page-title">AI Debate Arena</h1>
+      <p className="page-sub">Powered by Groq (free) — llama-3.3-70b</p>
+
+      {IS_FILE && (
+        <div className="cors-warn">
+          ⚠️ Open via a local server, not by double-clicking.<br/>
+          In Terminal: <code>cd ~/Downloads && npx serve .</code> → open <code>http://localhost:3000/debate-arena.html</code>
+        </div>
+      )}
+
+      {/* Groq key input */}
+      <div className="apikey-row">
+        <span className="apikey-label">Groq API Key</span>
+        <input
+          className="apikey-input"
+          type="password"
+          placeholder="gsk_…  (free at console.groq.com — no credit card)"
+          value={apiKey}
+          onChange={function(e){ setApiKey(e.target.value); }}
+        />
+      </div>
+      <div className="free-note">
+        🎉 <strong>100% free.</strong> Get your key at{" "}
+        <a href="https://console.groq.com" target="_blank" rel="noreferrer">console.groq.com</a>
+        {" "}→ API Keys → Create API Key. No credit card required.
+      </div>
+
+      {/* Controls */}
+      <div className="controls">
+        <input
+          className="topic-input"
+          placeholder='Enter a debate topic, e.g. "Social media does more harm than good"'
+          value={topic}
+          onChange={function(e){ setTopic(e.target.value); }}
+          onKeyDown={function(e){ if(e.key==="Enter" && !running && !verdictDone) runRound(); }}
+          disabled={running || verdictDone}
+        />
+        {!verdictDone && (
+          <button className="btn btn-start" onClick={runRound} disabled={running || !topic.trim() || !apiKey.trim()}>
+            {running && phase !== "verdict" ? "Running…" : round === 0 ? "Start Debate" : "Next Round"}
+          </button>
+        )}
+        {showVerdictBtn && (
+          <button className="btn btn-verdict" onClick={deliverVerdict}>Final Verdict</button>
+        )}
+        {(round > 0 || error) && (
+          <button className="btn btn-reset" onClick={reset}>Reset</button>
+        )}
+      </div>
+
+      {error && <div className="error-bar">⚠️ {error}</div>}
+
+      {phase !== "idle" && (
+        <div className="status-pill">
+          <span className={"pulse " + dotState}/>
+          {labels[phase] || ""}
+        </div>
+      )}
+
+      {/* Agent cards */}
+      {showAgents && (
+        <div className="agents-grid">
+          <AgentCard chipClass="chip-a" emoji="🔵" name="Proposer" stance="For"
+            bodyText={aText} isStreaming={phase==="proposer"}
+            scores={roundScores ? roundScores.proposer : null}
+            winnerState={roundScores ? aState : "neu"}/>
+          <AgentCard chipClass="chip-b" emoji="🔴" name="Opposer" stance="Against"
+            bodyText={bText} isStreaming={phase==="opposer"}
+            scores={roundScores ? roundScores.opposer : null}
+            winnerState={roundScores ? bState : "neu"}/>
+        </div>
+      )}
+
+      {/* Judge card */}
+      {showJudge && (
+        <div className="card">
+          <div className="card-head">
+            <div className="agent-chip chip-j">⚖️</div>
+            <span className="card-title">Judge</span>
+            <span className="card-tag">
+              {phase==="judge" ? "Deliberating…" : phase==="done" ? ("Round "+round+" scored") : ""}
+            </span>
+          </div>
+          <div className="card-body">
+            {phase==="judge" && !judgeComment && (
+              <>
+                <p className="muted" style={{marginBottom:8}}>Parsing arguments…</p>
+                <p className="judge-raw">{judgeRaw}<span className="cursor-blink"/></p>
+              </>
+            )}
+            {judgeComment
+              ? <p className="judge-comment">"{judgeComment}"</p>
+              : (phase !== "judge" && <p className="muted">Awaiting arguments…</p>)
+            }
+          </div>
+        </div>
+      )}
+
+      {/* Scoreboard */}
+      {showScoreboard && (
+        <div className="card">
+          <div className="card-head">
+            <div className="agent-chip chip-j">📋</div>
+            <span className="card-title">Scoreboard</span>
+            <span className="card-tag">{history.length} round{history.length!==1?"s":""}</span>
+          </div>
+          <div className="sb-table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th className="tl" rowSpan={2} style={{verticalAlign:"bottom"}}>Rnd</th>
+                  <th colSpan={4} className="sep" style={{color:"#4a7aaa"}}>🔵 Proposer</th>
+                  <th colSpan={4} className="sep" style={{color:"#aa4a4a"}}>🔴 Opposer</th>
+                  <th rowSpan={2} style={{verticalAlign:"bottom"}}>Win</th>
+                </tr>
+                <tr>
+                  <th>Logic</th><th>Evid.</th><th>Pers.</th><th className="sep">Pts</th>
+                  <th>Logic</th><th>Evid.</th><th>Pers.</th><th className="sep">Pts</th>
+                </tr>
+              </thead>
+              <tbody>
+                {history.map(function(h) {
+                  var pS = rowState(h,"proposer");
+                  var oS = rowState(h,"opposer");
+                  var p  = h.scores && h.scores.proposer;
+                  var o  = h.scores && h.scores.opposer;
+                  return (
+                    <tr key={h.round}>
+                      <td className="tl">#{h.round}</td>
+                      <td className={pS}>{p ? p.logic      : "—"}</td>
+                      <td className={pS}>{p ? p.evidence   : "—"}</td>
+                      <td className={pS}>{p ? p.persuasion : "—"}</td>
+                      <td className={"td-bold sep "+pS}>{p ? p.total : "—"}</td>
+                      <td className={oS}>{o ? o.logic      : "—"}</td>
+                      <td className={oS}>{o ? o.evidence   : "—"}</td>
+                      <td className={oS}>{o ? o.persuasion : "—"}</td>
+                      <td className={"td-bold sep "+oS}>{o ? o.total : "—"}</td>
+                      <td>
+                        {h.scores && h.scores.round_winner==="proposer" ? "🔵"
+                        : h.scores && h.scores.round_winner==="opposer" ? "🔴" : "—"}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+          <div className="totals-bar">
+            <div className="tot-item">
+              <span className="tot-label">🔵 Pts</span>
+              <span className={"tot-val "+(overall==="proposer"?"color-win":overall==="opposer"?"color-lose":"")}>{cum.proposer}</span>
+            </div>
+            <div className="tot-divider"/>
+            <div className="tot-item">
+              <span className="tot-label">🔴 Pts</span>
+              <span className={"tot-val "+(overall==="opposer"?"color-win":overall==="proposer"?"color-lose":"")}>{cum.opposer}</span>
+            </div>
+            <div className="tot-divider"/>
+            <div className="tot-item"><span className="tot-label">🔵 Rounds</span><span className="tot-val">{cum.rP}</span></div>
+            <div className="tot-divider"/>
+            <div className="tot-item"><span className="tot-label">🔴 Rounds</span><span className="tot-val">{cum.rO}</span></div>
+            <div className={"lead-chip "+(overall==="proposer"?"chip-green":overall==="opposer"?"chip-red":"chip-grey")}>
+              {overall==="proposer"?"🔵 Proposer leads":overall==="opposer"?"🔴 Opposer leads":"⚖️ Tied"}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Verdict */}
+      {showVerdict && (
+        <div className="card">
+          <div className="verdict-top">
+            <div className="verdict-crown">
+              {verdictDone?(overall==="proposer"?"🔵":overall==="opposer"?"🔴":"⚖️"):"⚖️"}
+            </div>
+            <div className="verdict-eyebrow">Final Verdict</div>
+            <div className="verdict-name">
+              {verdictDone
+                ?(overall==="proposer"?"Proposer wins":overall==="opposer"?"Opposer wins":"A draw")
+                :"Deliberating…"}
+            </div>
+            {verdictDone && overall!=="tied" && (
+              <div className="verdict-margin">
+                by {margin} point{margin!==1?"s":""} across {history.length} round{history.length!==1?"s":""}
+              </div>
+            )}
+          </div>
+          <div className="verdict-body">
+            <p className="verdict-prose">
+              {verdict}{!verdictDone && <span className="cursor-blink"/>}
+            </p>
+            {verdictDone && (
+              <div className="verdict-stats">
+                <div className="vstat">
+                  <div className="vstat-label">🔵 Proposer</div>
+                  <div className={"vstat-val "+(overall==="proposer"?"color-win":overall==="opposer"?"color-lose":"")}>{cum.proposer}</div>
+                  <div className="vstat-sub">{cum.rP} round{cum.rP!==1?"s":""} won</div>
+                </div>
+                <div className="vstat">
+                  <div className="vstat-label">🔴 Opposer</div>
+                  <div className={"vstat-val "+(overall==="opposer"?"color-win":overall==="proposer"?"color-lose":"")}>{cum.opposer}</div>
+                  <div className="vstat-sub">{cum.rO} round{cum.rO!==1?"s":""} won</div>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById("root")).render(React.createElement(App));
+</script>
+</body>
+</html>
